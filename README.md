@@ -1,42 +1,70 @@
+**Türkçe** | [English](README.en.md)
+
 # Multi Bluetooth Audio Router
 
 [![CI](https://github.com/burhanbty/multi-bluetooth-audio-router/actions/workflows/ci.yml/badge.svg)](https://github.com/burhanbty/multi-bluetooth-audio-router/actions/workflows/ci.yml)
 [![.NET 8](https://img.shields.io/badge/.NET-8.0-512BD4)](https://dotnet.microsoft.com/download/dotnet/8.0)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Lisans: MIT](https://img.shields.io/badge/Lisans-MIT-yellow.svg)](LICENSE)
 
-A Windows desktop utility that captures one playback endpoint and routes it to two output endpoints with independent latency compensation. It also includes compatibility preflight checks and structured WASAPI diagnostics for endpoint combinations that Windows or an audio driver refuses to open simultaneously.
+Bu proje, Windows'ta çalan sesi aynı anda iki farklı kulaklığa veya hoparlöre yönlendirmek için geliştirdiğim deneysel bir masaüstü uygulaması. İki çıkış için ayrı gecikme ayarı sunuyor; ayrıca bir cihaz kombinasyonu çalışmadığında sorunun nereden kaynaklanabileceğini anlamaya yardımcı olan WASAPI tanılama araçları içeriyor.
 
-> **Project status:** experimental. The routing engine is functional, but results depend on the Bluetooth adapter, audio driver, codecs, and endpoint topology. This application cannot bypass a hardware or driver limit that permits only one active A2DP stream.
+> **Projenin durumu:** Uygulamanın yönlendirme motoru çalışıyor, ancak sonuç Bluetooth adaptörüne, sürücülere, kullanılan codec'lere ve Windows'un oluşturduğu ses uç noktalarına bağlı. Donanım aynı anda yalnızca tek bir A2DP akışına izin veriyorsa bunu yazılımla aşmak mümkün değil.
 
-![Application overview](docs/assets/app-overview.png)
+![Uygulama görünümü](docs/assets/app-overview.png)
 
-## Why this project exists
+## Bu proje neden ortaya çıktı?
 
-Windows normally exposes each headset or speaker as an independent audio endpoint. Playing the same source through two endpoints requires separate render pipelines, format conversion, buffering, and explicit delay control. Bluetooth adds another constraint: some adapters and drivers cannot keep two high-quality output streams active at the same time.
+Başlangıçtaki fikir oldukça basitti: Windows'ta çalan sesi yakala ve iki ayrı çıkışa gönder. Uygulamaya başlayınca işin yalnızca sesi iki kez oynatmaktan ibaret olmadığını gördüm.
 
-This project makes those constraints observable instead of silently failing. It opens endpoints individually and in both orders, classifies common HRESULTs, and reports whether a failure looks device-specific, order-sensitive, format-related, or consistent with a shared resource limit.
+Windows her kulaklığı ve hoparlörü ayrı bir ses uç noktası olarak yönetiyor. Her çıkışın desteklediği format, tampon davranışı ve gecikmesi farklı olabiliyor. Bluetooth tarafında ise sürücü veya adaptör, iki cihaz da tek başına sorunsuz çalışsa bile ikinci yüksek kaliteli ses akışını açmayı reddedebiliyor.
 
-## Features
+Bu nedenle proje zamanla yalnızca bir ses yönlendirici olmaktan çıkıp “neden çalışmadı?” sorusuna da cevap vermeye çalışan bir araca dönüştü.
 
-- WASAPI loopback capture from a selected Windows playback endpoint
-- Simultaneous rendering to two distinct output endpoints
-- Independent 0–3000 ms delay per output in 10 ms steps
-- Per-route format conversion through NAudio and Media Foundation
-- Common startup prebuffer to reduce initial skew
-- Fast compatibility preflight with cached results
-- Full endpoint diagnostic in both opening orders
-- Symbolic classification for common WASAPI HRESULTs
-- File playback and click-track calibration modes
-- Live buffer, underflow, and overflow telemetry
+## Karşıma çıkan temel problemler
 
-## Requirements
+### İki cihaz tek başına çalışıyor, birlikte çalışmıyor
 
-- Windows 10 or Windows 11
-- [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0) to build from source
-- Two Windows playback endpoints
-- A virtual audio cable is recommended for feedback-safe system-audio routing
+En yanıltıcı durumlardan biri buydu. İki çıkış da ayrı ayrı açılabiliyor, fakat ikincisi devreye girdiğinde Windows `AUDCLNT_E_ENDPOINT_CREATE_FAILED` gibi bir hata döndürebiliyor. Bu her zaman uygulama hatası anlamına gelmiyor; ortak sürücü veya Bluetooth kaynağının sınırına ulaşılmış olabilir.
 
-## Build and run
+Bu ayrımı yapabilmek için uygulama çıkışları önce tek tek, ardından iki farklı açılış sırasıyla deniyor. Sonuçları cihaz kaynaklı hata, sıra duyarlılığı, format dönüşümü sorunu veya olası ortak kaynak sınırı olarak sınıflandırıyor.
+
+### Açılış sırası sonucu değiştirebiliyor
+
+Bazen “önce A, sonra B” sırası başarısız olurken ters sıra çalışabiliyor. Bu yüzden yalnızca tek bir deneme yapmak güvenilir bir sonuç vermiyordu. Hızlı uyumluluk kontrolü ve ayrıntılı donanım tanılaması her iki sırayı da özellikle test ediyor.
+
+### Her çıkış aynı ses formatını kabul etmiyor
+
+Bir cihazın örnekleme hızı veya kanal düzeni diğerinden farklı olabiliyor. Her çıkış için ayrı bir dönüştürme zinciri kurularak kaynak ses, cihazın Windows karışım formatına uyarlanıyor. Burada NAudio ve Media Foundation kullanılıyor.
+
+### Aynı anda başlatmak tam senkronizasyon sağlamıyor
+
+İki oynatıcıyı art arda başlatmak bile duyulabilir bir fark oluşturabiliyor. Bunu azaltmak için çıkışlar ortak bir başlangıç tamponu dolduktan sonra mümkün olduğunca yakın zamanda başlatılıyor. Yine de bağımsız Bluetooth cihazlarının ortak bir donanım saati yok; zaman içinde küçük kaymalar oluşabilir. Uygulamadaki manuel gecikme ve tıklama testi bu farkı pratik olarak ayarlamak için var.
+
+### Geri besleme riski
+
+Kaynak ile çıkışlardan biri aynı cihaz olursa yakalanan ses tekrar sisteme girerek döngü oluşturabilir. Bu nedenle kaynak ve iki çıkışın birbirinden farklı olması zorunlu. Sistem sesini güvenli biçimde yakalamak için sanal bir ses kablosu kullanmak en temiz yöntem.
+
+## Uygulama neler sunuyor?
+
+- Seçilen Windows oynatma aygıtından WASAPI loopback ile ses yakalama
+- Sesi aynı anda iki farklı çıkışa yönlendirme
+- Her çıkış için 0–3000 ms aralığında, 10 ms adımlı gecikme ayarı
+- Her cihaz için ayrı ses formatı dönüşümü
+- Başlangıç farkını azaltan ortak ön tampon
+- Hızlı ve önbellekli uyumluluk kontrolü
+- Cihazları tek tek ve iki farklı sırada deneyen ayrıntılı tanılama
+- Bilinen WASAPI hata kodlarını anlaşılır sınıflara dönüştürme
+- Ses dosyasıyla çıkış testi ve tıklama sesiyle gecikme kalibrasyonu
+- Tampon doluluk, taşma ve yetersiz veri durumlarını gösteren canlı telemetri
+
+## Gereksinimler
+
+- Windows 10 veya Windows 11
+- Kaynak koddan derlemek için [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0)
+- Windows'ta görünen iki farklı oynatma aygıtı
+- Sistem sesini geri besleme olmadan yönlendirmek için tercihen sanal bir ses kablosu
+
+## Derleme ve çalıştırma
 
 ```powershell
 git clone https://github.com/burhanbty/multi-bluetooth-audio-router.git
@@ -46,42 +74,42 @@ dotnet build MultiBluetoothAudioRouter.sln --configuration Release --no-restore
 dotnet run --project MultiBluetoothAudioRouter/MultiBluetoothAudioRouter.csproj --configuration Release
 ```
 
-Run the deterministic classifier and error-mapping tests with:
+Sınıflandırma ve hata eşleme testlerini çalıştırmak için:
 
 ```powershell
 dotnet run --project MultiBluetoothAudioRouter.Tests/MultiBluetoothAudioRouter.Tests.csproj --configuration Release --no-build
 ```
 
-## Recommended setup
+## Önerilen kullanım düzeni
 
-1. Set Windows' default output to VB-CABLE or another virtual audio cable.
-2. Select that virtual endpoint as **Source Device**.
-3. Select two different headphones or speakers as the outputs.
-4. Run the compatibility preflight before routing.
-5. Use the click-track calibration and add delay to whichever output is heard earlier.
+1. Windows'un varsayılan ses çıkışını VB-CABLE veya benzeri bir sanal ses kablosu yapın.
+2. Uygulamada bu sanal aygıtı **Source Device** olarak seçin.
+3. Dinlemek istediğiniz iki farklı kulaklığı veya hoparlörü çıkış olarak seçin.
+4. Yönlendirmeyi başlatmadan önce hızlı uyumluluk kontrolünü çalıştırın.
+5. Gerekirse tıklama testiyle iki cihazı dinleyin ve erken duyulan çıkışa gecikme ekleyin.
 
-The source must differ from both outputs, and the two outputs must differ from each other. This prevents recursive capture and feedback.
+Kaynak, iki çıkıştan da farklı olmalı; iki çıkış da aynı aygıt olmamalı. Uygulama geri besleme ve hatalı yönlendirme riskini azaltmak için bu kuralı kontrol ediyor.
 
-## Architecture
+## Projenin yapısı
 
-The WPF layer coordinates device selection and lifecycle events. Audio work is isolated into routing, per-output session, conversion, diagnostic, and classification components. See [docs/architecture.md](docs/architecture.md) for the component map and failure model.
+WPF katmanı cihaz seçimini ve kullanıcı etkileşimlerini yönetiyor. Ses yakalama, çıkış oturumları, tamponlama, format dönüşümü, hata sınıflandırma ve tanılama işlemleri ayrı bileşenlerde tutuluyor. Daha teknik bir görünüm için [mimari dokümanına](docs/architecture.md) bakabilirsiniz.
 
-## Known limitations
+## Bilinen sınırlar
 
-- Bluetooth synchronization is approximate; independent devices do not share a hardware clock and may drift.
-- Classic Bluetooth adapters commonly impose simultaneous A2DP constraints that software cannot override.
-- Transport detection uses Windows endpoint metadata and falls back to name-based heuristics when metadata is incomplete.
-- Delay changes are applied when a route starts; active routes must be restarted.
-- The current build is Windows-only because it uses WPF, WASAPI, and Media Foundation.
+- Bağımsız Bluetooth cihazları tam anlamıyla örnek seviyesinde senkron tutulamaz ve zamanla kayabilir.
+- Klasik Bluetooth adaptörlerinin eşzamanlı A2DP sınırları yazılımla kaldırılamaz.
+- Windows yeterli cihaz bilgisi vermediğinde bağlantı türü, açıkça sezgisel olarak işaretlenen isim tabanlı tahminlerle belirlenir.
+- Gecikme değişiklikleri yönlendirme başlatılırken uygulanır; aktif yönlendirmeyi durdurup yeniden başlatmak gerekir.
+- WPF, WASAPI ve Media Foundation kullanıldığı için proje yalnızca Windows'ta çalışır.
 
-## Privacy
+## Gizlilik
 
-Audio stays on the local machine. The application has no analytics, network client, account system, or cloud upload path. Diagnostic reports can include local endpoint names and device identifiers; review them before sharing publicly.
+Ses verisi bilgisayardan dışarı gönderilmez. Uygulamada analiz servisi, kullanıcı hesabı, ağ istemcisi veya buluta yükleme özelliği bulunmuyor. Tanılama raporları yerel aygıt adlarını ve cihaz kimliklerini içerebilir; bu raporları herkese açık paylaşmadan önce gözden geçirmeniz iyi olur.
 
-## Contributing
+## Katkıda bulunmak
 
-Bug reports should include the Windows version, adapter/driver details, endpoint types, the selected opening order, and a redacted diagnostic report. See [CONTRIBUTING.md](CONTRIBUTING.md) before submitting changes.
+Bir hata bildirirken Windows sürümünü, adaptör/sürücü bilgisini, kullandığınız çıkış türlerini ve mümkünse kişisel bilgileri temizlenmiş tanılama raporunu eklemeniz sorunu anlamayı kolaylaştırır. Kod katkıları için [CONTRIBUTING.md](CONTRIBUTING.md) dosyasına göz atabilirsiniz.
 
-## License
+## Lisans
 
-Released under the [MIT License](LICENSE).
+Proje [MIT Lisansı](LICENSE) ile yayımlanıyor.
