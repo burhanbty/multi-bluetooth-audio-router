@@ -1,0 +1,33 @@
+# Build results
+**/bin/
+**/obj/
+artifacts/
+TestResults/
+
+# IDE and editor state
+.vs/
+.vscode/
+.idea/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# Test and coverage output
+coverage/
+*.coverage
+*.coveragexml
+*.trx
+
+# Local packages and publish output
+packages/
+publish/
+*.nupkg
+
+# Operating-system files
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Local archive retained outside version control
+/MultiBluetoothAudioRouter.zip

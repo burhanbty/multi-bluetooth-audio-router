@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <AssemblyName>MultiBluetoothAudioRouter</AssemblyName>
+    <RootNamespace>MultiBluetoothAudioRouter</RootNamespace>
+    <Product>Multi Bluetooth Audio Router</Product>
+    <Authors>Burhan</Authors>
+    <Description>Routes a Windows playback endpoint to two outputs with per-device delay and WASAPI diagnostics.</Description>
+    <Version>0.1.0</Version>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <RepositoryUrl>https://github.com/burhanbty/multi-bluetooth-audio-router</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="NAudio" />
+  </ItemGroup>
+
+</Project>
