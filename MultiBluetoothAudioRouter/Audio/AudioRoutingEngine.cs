@@ -591,7 +591,7 @@ public sealed class AudioRoutingEngine : IDisposable
 
     private static void ValidateConfigurations(
         MMDevice sourceDevice,
-        IReadOnlyCollection<OutputRouteConfiguration> configurations)
+        List<OutputRouteConfiguration> configurations)
     {
         if (configurations.Count == 0)
         {
